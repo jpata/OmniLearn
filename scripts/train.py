@@ -122,6 +122,9 @@ def main():
                                                               period=1)
         callbacks.append(checkpoint_callback)
 
+    model.body.summary()
+    model.classifier_head.summary()
+
     hist =  model.fit(train_loader.make_tfdata(),
                       epochs=flags.epoch,
                       validation_data=val_loader.make_tfdata(),

@@ -9,7 +9,10 @@ import random
 import itertools
 import pickle, copy
 from scipy.stats import norm
-import horovod.tensorflow.keras as hvd
+try:
+    import horovod.tensorflow.keras as hvd
+except Exception as e:
+    print(e)
 
 def setup_gpus():
     hvd.init()
@@ -93,13 +96,14 @@ class DataLoader:
         X = self.preprocess(self.X,self.mask).astype(np.float32)
         X = self.pad(X,num_pad=self.num_pad)
         jet = self.preprocess_jet(self.jet).astype(np.float32)
-
-        tf_zip = tf.data.Dataset.from_tensor_slices(
-            {'input_features':X,
-             'input_points':X[:,:,:2],
-             'input_mask':self.mask.astype(np.float32),
-             'input_jet':jet,
-             'input_time':np.zeros((self.jet.shape[0],1)),})
+        
+        with tf.device("CPU"):
+            tf_zip = tf.data.Dataset.from_tensor_slices(
+                {'input_features':X,
+                'input_points':X[:,:,:2],
+                'input_mask':self.mask.astype(np.float32),
+                'input_jet':jet,
+                'input_time':np.zeros((self.jet.shape[0],1)),})
                         
         return tf_zip.cache().batch(self.batch_size).prefetch(tf.data.AUTOTUNE), self.y
 
@@ -107,18 +111,19 @@ class DataLoader:
         X = self.preprocess(self.X,self.mask).astype(np.float32)
         X = self.pad(X,num_pad=self.num_pad)
         jet = self.preprocess_jet(self.jet).astype(np.float32)
-        tf_zip = tf.data.Dataset.from_tensor_slices(
-            {'input_features':X,
-             'input_points':X[:,:,:2],
-             'input_mask':self.mask.astype(np.float32),
-             'input_jet':jet})
         
+        with tf.device("CPU"):
+            tf_zip = tf.data.Dataset.from_tensor_slices(
+                {'input_features':X,
+                'input_points':X[:,:,:2],
+                'input_mask':self.mask.astype(np.float32),
+                'input_jet':jet})
+            tf_y = tf.data.Dataset.from_tensor_slices(self.y)
 
-        tf_y = tf.data.Dataset.from_tensor_slices(self.y)
         del self.X, self.y,  self.mask
         gc.collect()
         
-        return tf.data.Dataset.zip((tf_zip,tf_y)).cache().shuffle(self.batch_size*100).batch(self.batch_size).prefetch(tf.data.AUTOTUNE)
+        return tf.data.Dataset.zip((tf_zip,tf_y)).take(50000).cache().shuffle(self.batch_size*100).batch(self.batch_size).prefetch(tf.data.AUTOTUNE)
 
     def load_data(self,path, batch_size=512,rank=0,size=1):
         # self.path = path

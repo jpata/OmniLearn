@@ -51,9 +51,9 @@ class PET(keras.Model):
         input_features = layers.Input(shape=(None, num_feat), name='input_features')
         input_points = layers.Input(shape=(None, 2), name='input_points')
         input_mask = layers.Input((None,1),name = 'input_mask')
-        input_jet = layers.Input((num_jet),name='input_jet')
-        input_label = layers.Input((num_classes),name='input_label')
-        input_time = layers.Input((1),name = 'input_time')
+        input_jet = layers.Input((num_jet, ),name='input_jet')
+        input_label = layers.Input((num_classes, ),name='input_label')
+        input_time = layers.Input((1, ),name = 'input_time')
 
 
         outputs_body = self.PET_body(input_features,
@@ -65,7 +65,7 @@ class PET(keras.Model):
                                      talking_head = talking_head)
 
         self.body = keras.Model(inputs=[input_features,input_points,input_mask,input_time],
-                                outputs=outputs_body)
+                                outputs=outputs_body, name="PET_body")
         
 
         outputs_classifier,outputs_regressor = self.PET_classifier(outputs_body,
@@ -85,19 +85,21 @@ class PET(keras.Model):
                                                )
 
         self.classifier_head = keras.Model(inputs=[outputs_body,input_jet],
-                                           outputs=[outputs_classifier,outputs_regressor])
+                                           outputs=[outputs_classifier,outputs_regressor], name="classifier_head")
         self.generator_head = keras.Model(inputs=[outputs_body,input_jet,
                                                   input_mask,input_time,input_label],
-                                          outputs=outputs_generator)
+                                          outputs=outputs_generator, name="generator_head")
         
         self.classifier = keras.Model(inputs=[input_features,input_points,input_mask,
                                               input_jet,input_time],
-                                      outputs=[outputs_classifier,outputs_regressor])
+                                      outputs=[outputs_classifier,outputs_regressor], name="classifier")
         self.generator = keras.Model(inputs=[input_features,input_points,input_mask,
                                              input_jet,input_time,input_label],
-                                     outputs=outputs_generator)
+                                     outputs=outputs_generator, name="generator")
         self.ema_body = keras.models.clone_model(self.body)
+        self.ema_body._name = "ema"
         self.ema_generator_head = keras.models.clone_model(self.generator_head)
+        self.ema_generator_head._name = "ema_head"
 
 
         
@@ -222,11 +224,11 @@ class PET(keras.Model):
 
 
         
-        for weight, ema_weight in zip(self.body.weights, self.ema_body.weights):
-            ema_weight.assign(self.ema * ema_weight + (1 - self.ema) * weight)
+        # for weight, ema_weight in zip(self.body.weights, self.ema_body.weights):
+        #     ema_weight.assign(self.ema * ema_weight + (1 - self.ema) * weight)
 
-        for weight, ema_weight in zip(self.generator_head.weights, self.ema_generator_head.weights):
-            ema_weight.assign(self.ema * ema_weight + (1 - self.ema) * weight)
+        # for weight, ema_weight in zip(self.generator_head.weights, self.ema_generator_head.weights):
+        #     ema_weight.assign(self.ema * ema_weight + (1 - self.ema) * weight)
             
         return {m.name: m.result() for m in self.metrics}
     

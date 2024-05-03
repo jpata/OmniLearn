@@ -34,14 +34,14 @@ class RandomDrop(layers.Layer):
 
 
     def call(self, x, training=False):
-        if training:
-            keep_prob = 1 - self.drop_prob
-            shape = (tf.shape(x)[0],1) 
-            random_tensor = keep_prob + tf.random.uniform(
-                shape, minval=0, maxval=1)
-            random_tensor = tf.floor(random_tensor)
-            x[:,:,self.num_skip:] = x[:,:,self.num_skip:] * random_tensor[:,None]
-            return x
+        # if training:
+        #     keep_prob = 1 - self.drop_prob
+        #     shape = (tf.shape(x)[0],1) 
+        #     random_tensor = keep_prob + tf.random.uniform(
+        #         shape, minval=0, maxval=1)
+        #     random_tensor = tf.floor(random_tensor)
+        #     x[:,:,self.num_skip:] = x[:,:,self.num_skip:] * random_tensor[:,None]
+        #     return x
         
         return x
 
